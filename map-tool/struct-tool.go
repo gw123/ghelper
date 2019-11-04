@@ -22,7 +22,6 @@ func Dump(item interface{}) {
 			fieldVal := itemValue.Field(i).Interface()
 			fmt.Printf("[ %v ]\n", fieldVal)
 		}
-
 	}
 }
 

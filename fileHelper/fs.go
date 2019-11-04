@@ -1,10 +1,10 @@
 package main
 
 import (
-"github.com/fsnotify/fsnotify"
-"fmt"
-"path/filepath"
-"os"
+	"fmt"
+	"github.com/fsnotify/fsnotify"
+	"os"
+	"path/filepath"
 )
 
 type Watch struct {

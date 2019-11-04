@@ -1,13 +1,15 @@
-package main
+package packdata
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha1"
 	"encoding/binary"
-	"github.com/fatedier/frp/utils/log"
 	"github.com/pkg/errors"
+	"net"
 )
+
+const HeaderLen = 4
+const HeaderDataLen = 2
+const HeaderDataTypeLen = 2
 
 const SignLength = 20
 
@@ -29,17 +31,8 @@ func NewMsg(msgType uint32, body []byte) *Msg {
 	}
 }
 
-func (msg *Msg) GetMsgSign() []byte {
-	mac := hmac.New(sha1.New, []byte(signKey))
-	mac.Write(msg.Body)
-	return mac.Sum(nil)
-}
-
-func (msg *Msg) CheckSign(sign []byte) bool {
-	mac := hmac.New(sha1.New, []byte(signKey))
-	mac.Write(msg.Body)
-	MsgSign := mac.Sum(nil)
-	return bytes.Equal(MsgSign, sign)
+func (msg *Msg) GetMsgSign(signer Signer) ([]byte, error) {
+	return signer.Sign(msg.Body)
 }
 
 func (msg *Msg) GetBody() []byte {
@@ -47,10 +40,11 @@ func (msg *Msg) GetBody() []byte {
 }
 
 type DataPackV1 struct {
+	signer Signer
 }
 
-func NewDataPackV1() *DataPackV1 {
-	return &DataPackV1{}
+func NewDataPackV1(signer Signer) *DataPackV1 {
+	return &DataPackV1{signer: signer}
 }
 
 func (dataPack *DataPackV1) GetHeadLen() uint32 {
@@ -60,7 +54,7 @@ func (dataPack *DataPackV1) GetHeadLen() uint32 {
 func (dataPack DataPackV1) Pack(msg *Msg) ([]byte, error) {
 	dataBuff := bytes.NewBuffer([]byte{})
 	var msgType, datalen uint32
-	msgType = 1
+	msgType = msg.MsgType
 	datalen = msg.Length + SignLength
 
 	if err := binary.Write(dataBuff, binary.BigEndian, datalen); err != nil {
@@ -71,7 +65,12 @@ func (dataPack DataPackV1) Pack(msg *Msg) ([]byte, error) {
 		return nil, err
 	}
 
-	if err := binary.Write(dataBuff, binary.BigEndian, msg.GetMsgSign()); err != nil {
+	sign, err := msg.GetMsgSign(dataPack.signer)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := binary.Write(dataBuff, binary.BigEndian, sign[0:SignLength]); err != nil {
 		return nil, err
 	}
 
@@ -98,7 +97,6 @@ func (dataPack DataPackV1) UnPack(data []byte) (*Msg, error) {
 
 	sign := make([]byte, SignLength)
 	if err := binary.Read(dataBuf, binary.BigEndian, sign); err != nil {
-
 		return nil, err
 	}
 
@@ -108,26 +106,59 @@ func (dataPack DataPackV1) UnPack(data []byte) (*Msg, error) {
 		return nil, err
 	}
 
-	if !msg.CheckSign(sign) {
-		return msg, errors.New("数据签名出错")
+	trueSign, err := msg.GetMsgSign(dataPack.signer)
+	if err != nil {
+		return msg, err
+	}
+
+	if len(trueSign) < SignLength {
+		return msg, errors.New("长度校验失败")
+	}
+
+	if !bytes.Equal(sign, trueSign[0:SignLength]) {
+		return msg, errors.New("签名错误...")
 	}
 
 	return msg, nil
 }
 
-func main() {
-	msg := NewMsg(1, []byte("123456"))
-	dataPack := NewDataPackV1()
-	pdata, err := dataPack.Pack(msg)
-	if err != nil {
-		log.Debug("pack %s", err.Error())
-	}
-	log.Debug("pack Data: %x", pdata)
-	unPackData, err := dataPack.UnPack(pdata)
-	if err != nil {
-		log.Debug("unpack %s", err.Error())
-		return
-	}
-	log.Debug("upPackData %s", unPackData.Body)
+func (dataPack DataPackV1) UnPackFromConn(conn net.Conn) (*Msg, error) {
+	var msgType, datalen uint32
 
+	if err := binary.Read(conn, binary.BigEndian, &datalen); err != nil {
+		return nil, err
+	}
+
+	if datalen < SignLength {
+		return nil, errors.New("报文数据异常")
+	}
+	if err := binary.Read(conn, binary.BigEndian, &msgType); err != nil {
+		return nil, err
+	}
+
+	sign := make([]byte, SignLength)
+	if err := binary.Read(conn, binary.BigEndian, sign); err != nil {
+		return nil, err
+	}
+
+	msg := &Msg{}
+	msg.Body = make([]byte, datalen-SignLength)
+	if err := binary.Read(conn, binary.BigEndian, msg.Body); err != nil {
+		return nil, err
+	}
+
+	trueSign, err := msg.GetMsgSign(dataPack.signer)
+	if err != nil {
+		return msg, err
+	}
+
+	if len(trueSign) < SignLength {
+		return msg, errors.New("长度校验失败")
+	}
+
+	if !bytes.Equal(sign, trueSign[0:SignLength]) {
+		return msg, errors.New("签名错误...")
+	}
+
+	return msg, nil
 }
