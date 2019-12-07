@@ -26,13 +26,13 @@ func (node *Node) Copy() *Node {
 	return &Node{data: node.data}
 }
 
+
 //链表
 type LinkedQueue struct {
 	//层数最底层 为0
 	Level       int
 	Header      Node
 	Tail        *Node
-	TailPreNode *Node
 }
 
 func NewLinkedQueue() *LinkedQueue {

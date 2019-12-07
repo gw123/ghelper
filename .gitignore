@@ -48,5 +48,7 @@ main
 upload
 node_modules/
 
-
+pprof/
+*.csv
+*.txt
 

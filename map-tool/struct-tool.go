@@ -9,9 +9,7 @@ import (
 func Dump(item interface{}) {
 	itemType := reflect.TypeOf(item)
 	itemValue := reflect.ValueOf(item)
-
 	fieldNum := itemType.NumField()
-
 	for i := 0; i < fieldNum; i++ {
 		field := itemType.Field(i)
 		fmt.Printf("%s: %v ,%v \n", field.Name, field.Type, field.Anonymous)

@@ -118,7 +118,7 @@ func main() {
 
 		es.Search(
 			es.Search.WithIndex("test"),
-			es.Search.WithBody(strings.NewReader(`{"query" : {"match" : { "title" : "logging" } } }`)),
+			es.Search.WithBody(strings.NewReader(`{" " : {"match" : { "title" : "logging" } } }`)),
 			es.Search.WithSize(1),
 		)
 	}
