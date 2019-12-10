@@ -145,3 +145,91 @@ func TestEncodeString(t *testing.T) {
 		})
 	}
 }
+
+func TestEncodeInt64(t *testing.T) {
+	type args struct {
+		input int64
+		salt  string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    string
+		wantErr bool
+	}{
+		{
+			name: "test1",
+			args: args{
+				input: 234699342942499671,
+				salt:  "123456",
+			},
+			want:    "aJbaa3ZQme0b",
+			wantErr: false,
+		},
+		{
+			name: "test2",
+			args: args{
+				input: 234699342942499671,
+				salt:  "LD9282731828:xkiwqo8821ksa88",
+			},
+			want:    "x38ddqJLr9b8",
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := EncodeInt64(tt.args.input, tt.args.salt)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("EncodeInt64() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("EncodeInt64() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestDecodeInt64(t *testing.T) {
+	type args struct {
+		input string
+		salt  string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    int64
+		wantErr bool
+	}{
+		{
+			name: "test1",
+			args: args{
+				input: "aJbaa3ZQme0b",
+				salt:  "123456",
+			},
+			want:    234699342942499671,
+			wantErr: false,
+		},
+		{
+			name: "test2",
+			args: args{
+				input: "x38ddqJLr9b8",
+				salt:  "LD9282731828:xkiwqo8821ksa88",
+			},
+			want:    234699342942499671,
+			wantErr: false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := DecodeInt64(tt.args.input, tt.args.salt)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("DecodeInt64() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("DecodeInt64() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

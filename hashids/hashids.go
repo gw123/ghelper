@@ -2,6 +2,7 @@ package hashids
 
 import (
 	"encoding/hex"
+	"errors"
 	"fmt"
 )
 import "github.com/speps/go-hashids"
@@ -41,7 +42,7 @@ func EncodeString(input, salt string) (string, error) {
 	hd := hashids.NewData()
 	hd.MinLength = 30
 	hd.Salt = salt
-	hd.Alphabet =  hashids.DefaultAlphabet
+	hd.Alphabet = hashids.DefaultAlphabet
 	hashId, err := hashids.NewWithData(hd)
 	if err != nil {
 		return "", err
@@ -67,4 +68,37 @@ func DecodeString(input, salt string) (string, error) {
 		return "", err
 	}
 	return string(b), err
+}
+
+func EncodeInt64(input int64, salt string) (string, error) {
+	hd := hashids.NewData()
+	hd.MinLength = 0
+	hd.Salt = salt
+	hd.Alphabet = hashids.DefaultAlphabet
+	hashId, err := hashids.NewWithData(hd)
+	if err != nil {
+		return "", err
+	}
+	return hashId.EncodeInt64([]int64{input})
+}
+
+func DecodeInt64(input, salt string) (int64, error) {
+	hd := hashids.NewData()
+	hd.MinLength = 0
+	hd.Salt = salt
+	hashId, err := hashids.NewWithData(hd)
+	if err != nil {
+		return 0, err
+	}
+
+	nums, err := hashId.DecodeInt64WithError(input)
+	if err != nil {
+		return 0, err
+	}
+
+	if len(nums) == 0 {
+		return 0, errors.New("解码数据Length异常")
+	}
+
+	return nums[0], err
 }
